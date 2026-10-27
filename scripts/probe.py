@@ -68,7 +68,7 @@ def publication(phase, origin, resource_path, token):
             os.environ.get("ACCEPTANCE_SKILL_SHA256"), "publication_source_digest_mismatch")
     target = resource_path.rsplit("/", 1)[0] + "/0.0.2"
     require(call(origin + target, token)[0] == 404, "publication_version_already_exists")
-    executable = Path(os.environ["RUNNER_TEMP"]) / "acceptance-cli/node_modules/.bin/axm"
+    executable = Path(os.environ["RUNNER_TEMP"]) / "acceptance-cli/axm"
     require(executable.is_file(), "pinned_cli_missing")
     with tempfile.TemporaryDirectory(prefix="workload-publication-") as temporary:
         root = Path(temporary)

@@ -32,21 +32,22 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13.9'
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: '24.22.0'
-      - name: Install the pinned public CLI
-        run: npm install --prefix "$RUNNER_TEMP/acceptance-cli" --no-audit --no-fund axm.sh@0.50.1
+      - name: Install the pinned standalone CLI
+        run: |
+          mkdir -p "$RUNNER_TEMP/acceptance-cli"
+          curl --fail --silent --show-error --proto '=https' --tlsv1.2 https://releases.axm.sh/cli-v0.50.1/axm-linux-x64 -o "$RUNNER_TEMP/acceptance-cli/axm"
+          printf '415eea0b29138011889a4deaaa130c6204a0bbc246abe29b58500df65123adc8  %s\n' "$RUNNER_TEMP/acceptance-cli/axm" | sha256sum --check
+          chmod 700 "$RUNNER_TEMP/acceptance-cli/axm"
       - name: Verify the isolated CLI runtime
         run: |
-          "$RUNNER_TEMP/acceptance-cli/node_modules/.bin/axm" --version
+          AXM_TELEMETRY=0 AXM_NO_UPDATE_CHECK=1 "$RUNNER_TEMP/acceptance-cli/axm" --version
           cli_check_dir="$(mktemp -d)"
           export AXM_USER_HOME="$cli_check_dir/home"
           export AXM_TELEMETRY=0
           export AXM_NO_UPDATE_CHECK=1
           cd "$cli_check_dir"
           printf '%s' '{"defaultRegistry":"diagnostic","sources":[{"name":"diagnostic","type":"registry","location":"https://example.invalid"}]}' > axm.json
-          "$RUNNER_TEMP/acceptance-cli/node_modules/.bin/axm" lint --json --non-interactive
+          "$RUNNER_TEMP/acceptance-cli/axm" lint --json --non-interactive
       - name: Observe workload protocol boundaries
         env:
           ACCEPTANCE_PHASE: ${{ inputs.phase }}
