@@ -5,6 +5,17 @@ on:
       phase:
         type: string
         required: true
+    secrets:
+      ACCEPTANCE_REGISTRY_ORIGIN:
+        required: true
+      ACCEPTANCE_RESOURCE_PATH:
+        required: true
+      ACCEPTANCE_DENIED_PATH:
+        required: true
+      ACCEPTANCE_SKILL_SOURCE:
+        required: true
+      ACCEPTANCE_SKILL_SHA256:
+        required: true
 permissions:
   contents: read
   id-token: write

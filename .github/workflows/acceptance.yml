@@ -18,3 +18,9 @@ jobs:
     uses: ./.github/workflows/workload-probe.yml
     with:
       phase: ${{ inputs.phase }}
+    secrets:
+      ACCEPTANCE_REGISTRY_ORIGIN: ${{ secrets.ACCEPTANCE_REGISTRY_ORIGIN }}
+      ACCEPTANCE_RESOURCE_PATH: ${{ secrets.ACCEPTANCE_RESOURCE_PATH }}
+      ACCEPTANCE_DENIED_PATH: ${{ secrets.ACCEPTANCE_DENIED_PATH }}
+      ACCEPTANCE_SKILL_SOURCE: ${{ secrets.ACCEPTANCE_SKILL_SOURCE }}
+      ACCEPTANCE_SKILL_SHA256: ${{ secrets.ACCEPTANCE_SKILL_SHA256 }}
