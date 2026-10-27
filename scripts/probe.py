@@ -86,12 +86,25 @@ def publication(phase, origin, resource_path, token):
 
         def cli(arguments):
             completed = subprocess.run([str(executable), *arguments, "--json", "--non-interactive"],
-                                       cwd=root, env=env, capture_output=True, timeout=120)
+                                       cwd=root, env=env, capture_output=True, text=True, timeout=120)
             if completed.returncode != 0:
                 label = "lint" if arguments == ["lint"] else "publication"
                 emit("cli_operation_refused", stage=label, exit_code=completed.returncode,
                      json_output=completed.stdout.lstrip().startswith("{"),
                      stderr_present=bool(completed.stderr))
+                try:
+                    failure = json.loads(completed.stdout)
+                    code = failure.get("error", {}).get("code")
+                    if code in ("issues", "usage", "not_found", "auth", "forbidden", "conflict",
+                                "rate_limit", "network", "validation", "internal", "unavailable",
+                                "quota", "auth_required", "auth_expired", "auth_denied", "timeout"):
+                        emit("cli_error_category", code=code)
+                except (ValueError, AttributeError):
+                    pass
+                for marker in ("Cannot find module", "ERR_MODULE_NOT_FOUND", "SyntaxError",
+                               "TypeError", "ENOENT", "EACCES", "certificate", "OIDC", "audience"):
+                    if marker in completed.stderr:
+                        emit("cli_runtime_marker", marker=marker)
                 raise RuntimeError("cli_operation_failed_output_withheld")
             document = json.loads(completed.stdout)
             require(document.get("ok") is True and isinstance(document.get("result"), dict),
