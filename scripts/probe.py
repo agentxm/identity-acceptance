@@ -156,7 +156,7 @@ def run():
     require(all(path.startswith("/") and not path.startswith("//") for path in paths)
             and paths[0] != paths[1], "two_distinct_relative_resource_paths_required")
     phase = os.environ.get("ACCEPTANCE_PHASE", "")
-    require(phase in ("baseline", "after-departure", "withdrawal-regrant"), "invalid_phase")
+    require(phase in ("baseline", "after-departure", "withdrawal-regrant", "personal-boundaries"), "invalid_phase")
     request_url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL", "")
     issuer_url = urllib.parse.urlsplit(request_url)
     require(issuer_url.scheme == "https" and bool(issuer_url.hostname)
@@ -195,7 +195,19 @@ def run():
     issued = time.monotonic()
     require(call(origin + paths[0], token)[0] == 200, "granted_resource_refused")
     require(call(origin + paths[1], token)[0] in (401, 403, 404), "ungranted_resource_not_denied")
-    require(call(origin + "/v1/auth/me", token)[0] == 401, "workload_admitted_as_human")
+    if phase == "personal-boundaries":
+        status, identity = call(origin + "/v1/auth/me", token)
+        require(status == 200 and isinstance(identity, dict)
+                and identity.get("token", {}).get("type") == "oidc"
+                and identity.get("token", {}).get("authority") == "limited"
+                and identity.get("token", {}).get("trustedPublisher") is not None,
+                "personal_publisher_identity_not_limited_oidc")
+        expected_handle = urllib.parse.unquote(paths[0]).split("/")[3]
+        require(identity.get("user", {}).get("handle", "").lstrip("@") == expected_handle.lstrip("@"),
+                "personal_publisher_owner_mismatch")
+        emit("personal_publisher_identity_verified")
+    else:
+        require(call(origin + "/v1/auth/me", token)[0] == 401, "workload_admitted_as_human")
     status, payload = exchange(jwt)
     require(status == 400 and isinstance(payload, dict)
             and payload.get("error") == "invalid_grant", "subject_replay_not_refused")
@@ -203,6 +215,23 @@ def run():
     require(status == 400 and isinstance(payload, dict)
             and payload.get("error") == "invalid_grant", "wrong_audience_not_refused")
     emit("protocol_observation_passed", phase=phase, lifetime_seconds=lifetime)
+    if phase == "personal-boundaries":
+        emit("ready_for_personal_publisher_disable")
+        deadline = time.monotonic() + 300
+        while True:
+            status, _ = call(origin + paths[0], token)
+            if status in (401, 403, 404):
+                break
+            require(status == 200, "unexpected_personal_revocation_response")
+            require(time.monotonic() < deadline, "personal_revocation_not_observed")
+            time.sleep(5)
+        require(time.monotonic() - issued < lifetime - 60,
+                "expiry_would_confound_personal_revocation")
+        status, payload = exchange(subject(origin))
+        require(status == 400 and isinstance(payload, dict)
+                and payload.get("error") == "invalid_grant", "disabled_personal_publisher_exchanged")
+        emit("personal_publisher_existing_and_fresh_credentials_refused")
+        return
     publication(phase, origin, paths[0], token)
     if phase != "withdrawal-regrant":
         return

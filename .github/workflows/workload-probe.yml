@@ -13,9 +13,9 @@ on:
       ACCEPTANCE_DENIED_PATH:
         required: true
       ACCEPTANCE_SKILL_SOURCE:
-        required: true
+        required: false
       ACCEPTANCE_SKILL_SHA256:
-        required: true
+        required: false
 permissions:
   contents: read
   id-token: write
@@ -33,12 +33,14 @@ jobs:
         with:
           python-version: '3.13.9'
       - name: Install the pinned standalone CLI
+        if: inputs.phase != 'personal-boundaries'
         run: |
           mkdir -p "$RUNNER_TEMP/acceptance-cli"
           curl --fail --silent --show-error --proto '=https' --tlsv1.2 https://releases.axm.sh/cli-v0.50.1/axm-linux-x64 -o "$RUNNER_TEMP/acceptance-cli/axm"
           printf '415eea0b29138011889a4deaaa130c6204a0bbc246abe29b58500df65123adc8  %s\n' "$RUNNER_TEMP/acceptance-cli/axm" | sha256sum --check
           chmod 700 "$RUNNER_TEMP/acceptance-cli/axm"
       - name: Verify the isolated CLI runtime
+        if: inputs.phase != 'personal-boundaries'
         run: |
           AXM_TELEMETRY=0 AXM_NO_UPDATE_CHECK=1 "$RUNNER_TEMP/acceptance-cli/axm" --version
           cli_check_dir="$(mktemp -d)"
