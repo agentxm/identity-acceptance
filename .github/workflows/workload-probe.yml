@@ -37,6 +37,16 @@ jobs:
           node-version: '24.22.0'
       - name: Install the pinned public CLI
         run: npm install --prefix "$RUNNER_TEMP/acceptance-cli" --no-audit --no-fund axm.sh@0.50.1
+      - name: Verify the isolated CLI runtime
+        run: |
+          "$RUNNER_TEMP/acceptance-cli/node_modules/.bin/axm" --version
+          cli_check_dir="$(mktemp -d)"
+          export AXM_USER_HOME="$cli_check_dir/home"
+          export AXM_TELEMETRY=0
+          export AXM_NO_UPDATE_CHECK=1
+          cd "$cli_check_dir"
+          printf '%s' '{"defaultRegistry":"diagnostic","sources":[{"name":"diagnostic","type":"registry","location":"https://example.invalid"}]}' > axm.json
+          "$RUNNER_TEMP/acceptance-cli/node_modules/.bin/axm" lint --json --non-interactive
       - name: Observe workload protocol boundaries
         env:
           ACCEPTANCE_PHASE: ${{ inputs.phase }}
