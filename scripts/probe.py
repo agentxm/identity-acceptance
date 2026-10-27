@@ -87,7 +87,12 @@ def publication(phase, origin, resource_path, token):
         def cli(arguments):
             completed = subprocess.run([str(executable), *arguments, "--json", "--non-interactive"],
                                        cwd=root, env=env, capture_output=True, timeout=120)
-            require(completed.returncode == 0, "cli_operation_failed_output_withheld")
+            if completed.returncode != 0:
+                label = "lint" if arguments == ["lint"] else "publication"
+                emit("cli_operation_refused", stage=label, exit_code=completed.returncode,
+                     json_output=completed.stdout.lstrip().startswith("{"),
+                     stderr_present=bool(completed.stderr))
+                raise RuntimeError("cli_operation_failed_output_withheld")
             document = json.loads(completed.stdout)
             require(document.get("ok") is True and isinstance(document.get("result"), dict),
                     "cli_result_envelope_invalid")
