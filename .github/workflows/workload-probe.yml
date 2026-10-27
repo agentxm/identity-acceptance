@@ -1,0 +1,37 @@
+name: Workload protocol probe
+on:
+  workflow_call:
+    inputs:
+      phase:
+        type: string
+        required: true
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: acceptance
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13.9'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.0'
+      - name: Install the pinned public CLI
+        run: npm install --prefix "$RUNNER_TEMP/acceptance-cli" --no-audit --no-fund axm.sh@0.50.1
+      - name: Observe workload protocol boundaries
+        env:
+          ACCEPTANCE_PHASE: ${{ inputs.phase }}
+          ACCEPTANCE_REGISTRY_ORIGIN: ${{ secrets.ACCEPTANCE_REGISTRY_ORIGIN }}
+          ACCEPTANCE_RESOURCE_PATH: ${{ secrets.ACCEPTANCE_RESOURCE_PATH }}
+          ACCEPTANCE_DENIED_PATH: ${{ secrets.ACCEPTANCE_DENIED_PATH }}
+          ACCEPTANCE_SKILL_SOURCE: ${{ secrets.ACCEPTANCE_SKILL_SOURCE }}
+          ACCEPTANCE_SKILL_SHA256: ${{ secrets.ACCEPTANCE_SKILL_SHA256 }}
+        run: python scripts/probe.py

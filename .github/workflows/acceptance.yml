@@ -1,0 +1,20 @@
+name: Workload acceptance
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        type: choice
+        required: true
+        options: [baseline, after-departure, withdrawal-regrant]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: workload-acceptance
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/workload-probe.yml
+    with:
+      phase: ${{ inputs.phase }}
